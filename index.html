@@ -54,9 +54,14 @@
   .pl .cover{width:44px;height:44px}
 
   /* ---------- Host / Beamer ---------- */
-  .host{display:grid;grid-template-columns:1fr minmax(320px,32vw);gap:3vw;padding:3vw;min-height:100vh;position:relative}
+  .host{display:grid;grid-template-columns:1fr minmax(190px,15vw);gap:3vw;padding:3vw;min-height:100vh;position:relative;z-index:1}
+  /* Hintergrund-Video (YouTube, stumm, Loop) */
+  #bgv{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:#000}
+  #bgv iframe,#bgvPlayer{position:absolute;top:50%;left:50%;width:100vw;height:56.25vw;min-height:100vh;min-width:177.78vh;transform:translate(-50%,-50%) scale(1.15);border:0}
+  #bgvShade{position:fixed;inset:0;z-index:0;pointer-events:none;background:rgba(8,20,17,var(--shade,.55))}
+  body.hasvideo .snow{opacity:.18}
   .eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:13px;color:var(--gold2);font-weight:700}
-  .np{display:flex;gap:22px;align-items:center;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .np{display:flex;gap:22px;align-items:center;background:rgba(13,31,26,.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:var(--r);padding:18px}
   .np .cover{width:clamp(80px,9vw,140px);height:clamp(80px,9vw,140px)}
   .np h2{font-size:clamp(24px,2.6vw,44px);line-height:1.1}
   .np .artist{font-size:clamp(15px,1.3vw,22px);color:var(--muted);margin-top:4px}
@@ -66,7 +71,7 @@
   .status h2{font-size:clamp(22px,2.2vw,38px)}
   .pill{background:rgba(233,180,76,.15);color:var(--gold2);border:1px solid rgba(233,180,76,.35);padding:6px 14px;border-radius:99px;font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(14px,1.2vw,20px)}
   .cands{display:grid;gap:14px}
-  .cand{position:relative;display:flex;gap:16px;align-items:center;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);overflow:hidden}
+  .cand{position:relative;display:flex;gap:16px;align-items:center;padding:14px;border-radius:var(--r);background:rgba(23,58,51,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);overflow:hidden}
   .cand .fill{position:absolute;inset:0;width:0;background:linear-gradient(90deg,rgba(233,180,76,.28),rgba(233,180,76,.12));transition:width .8s ease}
   .cand>*:not(.fill){position:relative}
   .cand .cover{width:clamp(56px,5.5vw,88px);height:clamp(56px,5.5vw,88px)}
@@ -79,12 +84,12 @@
   .cand.win{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold) inset}
   .cand.lose{opacity:.45}
   .cand.clickable{cursor:pointer}
-  .qrbox{background:var(--text);color:#13241f;border-radius:24px;padding:26px;display:flex;flex-direction:column;align-items:center;text-align:center;align-self:start;position:sticky;top:3vw}
-  .qrbox h2{font-size:clamp(22px,2vw,34px);line-height:1.15;margin-bottom:14px}
+  .qrbox{background:var(--text);color:#13241f;border-radius:20px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;text-align:center;align-self:start;position:sticky;top:3vw}
+  .qrbox h2{font-size:clamp(16px,1.25vw,22px);line-height:1.15;margin-bottom:10px}
   #qr{width:100%;aspect-ratio:1;display:grid;place-items:center}
   #qr img,#qr canvas,#qr svg{width:100%;height:auto;image-rendering:pixelated}
-  .qrbox .sub{font-size:15px;color:#4b5d57;margin-top:12px}
-  .qrbox .total{margin-top:14px;font-weight:700;font-size:18px}
+  .qrbox .sub{font-size:13px;color:#4b5d57;margin-top:8px}
+  .qrbox .total{margin-top:8px;font-weight:700;font-size:15px}
   .gear{position:fixed;top:14px;right:14px;z-index:20;opacity:.5}
   .gear:hover{opacity:1}
   .drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);background:#0f2622;border-left:1px solid var(--line);z-index:30;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(0,0,0,.4)}
@@ -127,13 +132,14 @@
 
   @media (max-width:900px){
     .host{grid-template-columns:1fr}
-    .qrbox{position:static;max-width:420px;justify-self:center;width:100%}
+    .qrbox{position:static;max-width:280px;justify-self:center;width:100%}
   }
   @media print{
     body{background:#fff}
-    .snow,.gear,.drawer,.host>main,.toast{display:none!important}
+    .snow,.gear,.drawer,.host>main,.toast,#bgv,#bgvShade{display:none!important}
     .host{display:block;padding:0}
-    .qrbox{position:static;box-shadow:none;max-width:14cm;margin:2cm auto}
+    .qrbox{position:static;box-shadow:none;max-width:14cm;margin:2cm auto;padding:26px}
+    .qrbox h2{font-size:30px}
   }
 </style>
 </head>
@@ -144,7 +150,7 @@
 <div id="setup" class="setup hidden">
   <div class="eyebrow">Weihnachtsfeier · Musik-Voting</div>
   <h1>Was läuft als Nächstes?</h1>
-  <p class="muted">Einmal einrichten, dann läuft die Abstimmung von allein. Alle Einstellungen bleiben in diesem Browser gespeichert. <span style="opacity:.6">· Version 18.11. 15:50</span></p>
+  <p class="muted">Einmal einrichten, dann läuft die Abstimmung von allein. Alle Einstellungen bleiben in diesem Browser gespeichert. <span style="opacity:.6">· Version 18.11. 22:00</span></p>
 
   <div class="step" id="st1">
     <h3><span class="num">1</span> Stimmen-Speicher (Firebase)</h3>
@@ -195,6 +201,8 @@
 </div>
 
 <!-- ================= HOST / BEAMER ================= -->
+<div id="bgv" class="hidden"><div id="bgvPlayer"></div></div>
+<div id="bgvShade" class="hidden"></div>
 <div id="host" class="host hidden">
   <main>
     <div class="eyebrow" style="margin-bottom:10px">Jetzt läuft</div>
@@ -243,6 +251,14 @@
     <input id="optMin" type="number" min="10" max="300" step="5">
   </section>
   <section>
+    <label for="optVideos">Hintergrund-Videos (YouTube-Links, einer pro Zeile)</label>
+    <textarea id="optVideos" rows="4" placeholder="https://www.youtube.com/watch?v=…" style="font:inherit;width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#0b1916;color:var(--text);resize:vertical"></textarea>
+    <p class="muted" style="font-size:13px;margin:6px 0 10px">Laufen stumm im Loop hintereinander. Leer lassen = kein Video. Manche Videos erlauben das Einbetten nicht – die werden automatisch übersprungen.</p>
+    <div class="row"><button id="saveVideos" class="small">Videos übernehmen</button><span id="vidMsg" class="muted" style="font-size:13px"></span></div>
+    <label for="optShade" style="margin-top:14px">Video abdunkeln</label>
+    <input id="optShade" type="range" min="0" max="85" step="5" style="padding:0">
+  </section>
+  <section>
     <label>Link für die Gäste</label>
     <code id="voteLink"></code>
     <div class="row" style="margin-top:10px">
@@ -266,7 +282,7 @@
       <button id="btnResetPlayed" class="small ghost">Gespielte Songs zurücksetzen</button>
     </div>
     <p id="dbg" class="muted" style="font-size:12px;margin-top:12px"></p>
-    <p class="muted" style="font-size:12px;margin:4px 0 0">Version 18.11. 15:50</p>
+    <p class="muted" style="font-size:12px;margin:4px 0 0">Version 18.11. 22:00</p>
   </section>
 </div>
 
@@ -684,6 +700,8 @@ async function startParty(){
   drawQr(link);
   setupDrawer(link);
 
+  applyShade();
+  startVideos();
   render();
   pollSpotify();
   // Taktgeber in einem Worker: läuft auch weiter, wenn der Tab im Hintergrund ist (Browser drosseln sonst normale Timer)
@@ -695,6 +713,53 @@ async function startParty(){
   }catch(e){ setInterval(beat, 1000); }
   document.addEventListener('visibilitychange', () => { if (!document.hidden){ pollSpotify(); keepAwake(); } });
   keepAwake();
+}
+
+/* ---------- Hintergrund-Videos (YouTube IFrame API) ---------- */
+function parseYouTube(text){
+  const ids = [];
+  String(text || '').split(/[\s,]+/).forEach(s => {
+    s = s.trim(); if (!s) return;
+    const m = s.match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})/) || s.match(/^([A-Za-z0-9_-]{11})$/);
+    if (m && !ids.includes(m[1])) ids.push(m[1]);
+  });
+  return ids;
+}
+function applyShade(){ document.documentElement.style.setProperty('--shade', String(S.shade ?? 0.55)); }
+let ytPlayer = null, ytApi = null, ytBad = new Set();
+function loadYtApi(){
+  if (ytApi) return ytApi;
+  ytApi = new Promise(res => {
+    if (window.YT && window.YT.Player) return res();
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { if (prev) prev(); res(); };
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
+  });
+  return ytApi;
+}
+async function startVideos(){
+  const ids = (S.videos || []).filter(id => !ytBad.has(id));
+  const on = ids.length > 0;
+  $('bgv').classList.toggle('hidden', !on); $('bgvShade').classList.toggle('hidden', !on);
+  document.body.classList.toggle('hasvideo', on);
+  if (ytPlayer){ try{ ytPlayer.destroy(); }catch(e){} ytPlayer = null; $('bgv').innerHTML = '<div id="bgvPlayer"></div>'; }
+  if (!on) return;
+  await loadYtApi();
+  ytPlayer = new YT.Player('bgvPlayer', {
+    // bewusst youtube.com (nicht youtube-nocookie.com), damit ein eingeloggtes YouTube-Premium-Konto erkannt wird
+    host: 'https://www.youtube.com',
+    videoId: ids[0],
+    playerVars: { autoplay:1, mute:1, controls:0, loop:1, playlist:ids.join(','), playsinline:1, rel:0, iv_load_policy:3, disablekb:1, fs:0, modestbranding:1 },
+    events: {
+      onReady: e => { e.target.mute(); e.target.playVideo(); },
+      onStateChange: e => { if (e.data === YT.PlayerState.ENDED && ids.length === 1){ e.target.seekTo(0); e.target.playVideo(); } },
+      onError: e => {
+        // Video nicht einbettbar / gelöscht: merken und mit den übrigen neu starten
+        const bad = ids[ (e.target.getPlaylistIndex && e.target.getPlaylistIndex() >= 0) ? e.target.getPlaylistIndex() : 0 ];
+        if (bad && !ytBad.has(bad)){ ytBad.add(bad); toast('Ein Hintergrund-Video lässt sich nicht einbetten und wird übersprungen.', true); setTimeout(startVideos, 500); }
+      }
+    }
+  });
 }
 
 let wakeLock = null;
@@ -719,6 +784,16 @@ function setupDrawer(link){
   $('optAuto').onchange = () => { S.auto = $('optAuto').checked; saveS(); render(); };
   $('optLead').value = S.lead; $('optLead').onchange = () => { S.lead = Math.max(8, +$('optLead').value || 25); saveS(); };
   $('optMin').value = S.minVote; $('optMin').onchange = () => { S.minVote = Math.max(10, +$('optMin').value || 45); saveS(); };
+  $('optVideos').value = (S.videos || []).map(id => 'https://www.youtube.com/watch?v=' + id).join('\n');
+  $('saveVideos').onclick = () => {
+    const ids = parseYouTube($('optVideos').value);
+    S.videos = ids; saveS();
+    $('vidMsg').textContent = ids.length ? `${ids.length} Video${ids.length > 1 ? 's' : ''} übernommen` : 'Kein Video – Hintergrund aus';
+    $('optVideos').value = ids.map(id => 'https://www.youtube.com/watch?v=' + id).join('\n');
+    startVideos();
+  };
+  $('optShade').value = Math.round((S.shade ?? 0.55) * 100);
+  $('optShade').oninput = () => { S.shade = +$('optShade').value / 100; saveS(); applyShade(); };
   $('btnClose').onclick = () => { if (S.status === 'open') closeRound(true); };
   $('btnNew').onclick = () => startRound();
   $('btnSkip').onclick = async () => { try{ const r = await SP.api('/me/player/next', { method:'POST' }); if (!r.ok && r.status !== 204) throw new Error('Spotify ' + r.status); setTimeout(pollSpotify, 800); }catch(e){ toast('Überspringen ging nicht: ' + e.message); } };
