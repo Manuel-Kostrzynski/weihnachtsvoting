@@ -144,7 +144,7 @@
 <div id="setup" class="setup hidden">
   <div class="eyebrow">Weihnachtsfeier · Musik-Voting</div>
   <h1>Was läuft als Nächstes?</h1>
-  <p class="muted">Einmal einrichten, dann läuft die Abstimmung von allein. Alle Einstellungen bleiben in diesem Browser gespeichert. <span style="opacity:.6">· Version 18.11. 14:45</span></p>
+  <p class="muted">Einmal einrichten, dann läuft die Abstimmung von allein. Alle Einstellungen bleiben in diesem Browser gespeichert. <span style="opacity:.6">· Version 18.11. 15:50</span></p>
 
   <div class="step" id="st1">
     <h3><span class="num">1</span> Stimmen-Speicher (Firebase)</h3>
@@ -266,7 +266,7 @@
       <button id="btnResetPlayed" class="small ghost">Gespielte Songs zurücksetzen</button>
     </div>
     <p id="dbg" class="muted" style="font-size:12px;margin-top:12px"></p>
-    <p class="muted" style="font-size:12px;margin:4px 0 0">Version 18.11. 14:45</p>
+    <p class="muted" style="font-size:12px;margin:4px 0 0">Version 18.11. 15:50</p>
   </section>
 </div>
 
@@ -501,7 +501,13 @@ async function showSetup(){
   $('redirUri').textContent = REDIRECT;
   $('fbUrl').value = LS.get('fb', '');
   $('clientId').value = LS.get('clientId', '');
-  if (!window.isSecureContext) toast('Die Seite muss über https:// laufen (oder http://127.0.0.1), sonst klappt die Spotify-Anmeldung nicht.');
+  if (location.protocol === 'file:'){
+    const w = document.createElement('div');
+    w.className = 'step'; w.style.cssText = 'border-color:#b8433f;background:#3a1c1b';
+    w.innerHTML = '<h3>⚠︎ Lokale Datei geöffnet</h3><p style="margin:0">Du hast die index.html direkt vom Schreibtisch geöffnet. So klappt die Spotify-Anmeldung nicht. Öffne stattdessen deine GitHub-Adresse (<code>https://…github.io/…</code>) – am besten als Lesezeichen speichern.</p>';
+    $('st1').before(w);
+  }
+  else if (!window.isSecureContext) toast('Die Seite muss über https:// laufen (oder http://127.0.0.1), sonst klappt die Spotify-Anmeldung nicht.');
 
   const refresh = async () => {
     const fbOk = !!normDb(LS.get('fb', ''));
