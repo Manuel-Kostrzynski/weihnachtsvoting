@@ -50,6 +50,7 @@
   .pl-list{display:grid;gap:8px;max-height:360px;overflow:auto;margin-top:10px}
   .pl{display:flex;gap:12px;align-items:center;padding:8px;border-radius:12px;border:1px solid var(--line);background:#0f2622;cursor:pointer;text-align:left;color:var(--text);font-weight:500}
   .pl.sel{border-color:var(--gold);background:#2a2a14}
+  .pl.dim{opacity:.45}
   .pl .cover{width:44px;height:44px}
 
   /* ---------- Host / Beamer ---------- */
@@ -143,7 +144,7 @@
 <div id="setup" class="setup hidden">
   <div class="eyebrow">Weihnachtsfeier · Musik-Voting</div>
   <h1>Was läuft als Nächstes?</h1>
-  <p class="muted">Einmal einrichten, dann läuft die Abstimmung von allein. Alle Einstellungen bleiben in diesem Browser gespeichert. <span style="opacity:.6">· Version 18.11. 14:30</span></p>
+  <p class="muted">Einmal einrichten, dann läuft die Abstimmung von allein. Alle Einstellungen bleiben in diesem Browser gespeichert. <span style="opacity:.6">· Version 18.11. 14:45</span></p>
 
   <div class="step" id="st1">
     <h3><span class="num">1</span> Stimmen-Speicher (Firebase)</h3>
@@ -176,7 +177,14 @@
       <button id="loadPl" class="small ghost">Playlists laden</button>
       <input id="plSearch" class="hidden" type="search" placeholder="Playlist suchen …" autocomplete="off" style="flex:1;min-width:200px">
     </div>
+    <p id="plInfo" class="muted" style="font-size:13px;margin:10px 0 0"></p>
     <div id="plList" class="pl-list"></div>
+    <label style="margin-top:16px">Playlist nicht in der Liste? Link einfügen:</label>
+    <div class="row">
+      <input id="plLink" placeholder="https://open.spotify.com/playlist/…" style="flex:1;min-width:220px">
+      <button id="plLinkBtn" class="small ghost">Übernehmen</button>
+    </div>
+    <p id="plMsg" style="margin:10px 0 0;font-size:14px"></p>
   </div>
 
   <div class="step">
@@ -258,7 +266,7 @@
       <button id="btnResetPlayed" class="small ghost">Gespielte Songs zurücksetzen</button>
     </div>
     <p id="dbg" class="muted" style="font-size:12px;margin-top:12px"></p>
-    <p class="muted" style="font-size:12px;margin:4px 0 0">Version 18.11. 14:30</p>
+    <p class="muted" style="font-size:12px;margin:4px 0 0">Version 18.11. 14:45</p>
   </section>
 </div>
 
@@ -532,6 +540,8 @@ async function showSetup(){
   };
   $('logoutBtn').onclick = () => { SP.logout(); refresh(); };
   $('loadPl').onclick = loadPlaylists;
+  $('plLinkBtn').onclick = playlistFromLink;
+  $('plLink').onkeydown = ev => { if (ev.key === 'Enter') playlistFromLink(); };
   $('startBtn').onclick = async () => {
     $('startBtn').disabled = true; $('startBtn').textContent = 'Lade Songs …';
     try{ await loadTracks(true); LS.set('running', true); startParty(); }
@@ -550,37 +560,70 @@ async function loadPlaylists(){
   box.innerHTML = '<div class="muted">Lade …</div>';
   try{
     const me = await SP.json('/me');
-    let url = '/me/playlists?limit=50', all = [];
-    while (url && all.length < 2000){ const j = await SP.json(url); all = all.concat(j.items || []); url = j.next; }
-    const usable = all.filter(p => p && (p.collaborative || (p.owner && p.owner.id === me.id)));
+    let url = '/me/playlists?limit=50', all = [], total = null;
+    while (url && all.length < 2000){
+      const j = await SP.json(url);
+      if (total === null && typeof j.total === 'number') total = j.total;
+      all = all.concat((j.items || []).filter(Boolean));
+      url = j.next;
+    }
+    const own = p => p.collaborative || (p.owner && p.owner.id === me.id);
+    all.sort((a, b) => (own(b) - own(a)));   // eigene zuerst, Reihenfolge sonst wie in Spotify
+    const nOwn = all.filter(own).length;
     const sel = LS.get('playlist', null);
-    if (!usable.length){ box.innerHTML = '<div class="muted">Keine eigene Playlist gefunden. Lege in Spotify eine Playlist an (z.&nbsp;B. „Weihnachtsfeier“) und lade die Liste neu.</div>'; return; }
-    box.innerHTML = usable.map(p => {
+    $('plInfo').textContent = `${all.length}${total && total > all.length ? ' von ' + total : ''} Playlists geladen · ${nOwn} eigene (nutzbar) · ${all.length - nOwn} gefolgte (ausgegraut)`;
+    box.innerHTML = all.map(p => {
       const n = (p.items && p.items.total) ?? (p.tracks && p.tracks.total) ?? '';
       const img = (p.images && p.images[0] && p.images[0].url) || '';
-      return `<button class="pl ${sel && sel.id === p.id ? 'sel' : ''}" data-id="${esc(p.id)}" data-name="${esc(p.name)}"><div class="cover" style="${coverStyle(img)}"></div><div><div>${esc(p.name)}</div><div class="muted" style="font-size:13px">${n !== '' ? n + ' Songs' : ''}</div></div></button>`;
+      const ok = own(p);
+      const sub = ok ? (n !== '' ? n + ' Songs' : '') : `nur gefolgt (von ${esc((p.owner && (p.owner.display_name || p.owner.id)) || '?')}) – Spotify gibt die Songs nicht heraus`;
+      return `<button class="pl ${ok ? '' : 'dim'} ${sel && sel.id === p.id ? 'sel' : ''}" data-ok="${ok ? 1 : 0}" data-id="${esc(p.id)}" data-name="${esc(p.name)}"><div class="cover" style="${coverStyle(img)}"></div><div><div>${esc(p.name)}</div><div class="muted" style="font-size:13px">${sub}</div></div></button>`;
     }).join('');
     const search = $('plSearch');
     search.classList.remove('hidden');
-    const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const filter = () => {
       const q = norm(search.value.trim());
       let shown = 0;
       box.querySelectorAll('.pl').forEach(b => { const ok = !q || norm(b.dataset.name).includes(q); b.classList.toggle('hidden', !ok); if (ok) shown++; });
       let none = box.querySelector('.pl-none');
-      if (!shown){ if (!none){ none = document.createElement('div'); none.className = 'pl-none muted'; box.appendChild(none); } none.textContent = 'Keine Playlist gefunden. Gefolgte Playlists erscheinen hier nicht – kopiere sie in eine eigene.'; }
+      if (!shown){ if (!none){ none = document.createElement('div'); none.className = 'pl-none muted'; box.appendChild(none); } none.textContent = 'Keine Playlist mit diesem Namen gefunden. Probier unten den Playlist-Link.'; }
       else if (none) none.remove();
     };
     search.oninput = filter;
     filter();
     if (!sel) setTimeout(() => search.focus(), 50);
     box.querySelectorAll('.pl').forEach(b => b.onclick = () => {
-      LS.set('playlist', { id:b.dataset.id, name:b.dataset.name }); LS.del('tracks');
+      if (b.dataset.ok !== '1'){ toast('Diese Playlist gehört nicht dir. Kopiere sie in Spotify in eine eigene Playlist (alle Songs markieren → Rechtsklick → Zur Playlist hinzufügen → Neue Playlist).'); return; }
+      choosePlaylist(b.dataset.id, b.dataset.name);
       box.querySelectorAll('.pl').forEach(x => x.classList.toggle('sel', x === b));
-      $('st4').classList.add('done');
-      $('startBtn').disabled = !(normDb(LS.get('fb','')) && SP.tok);
     });
   }catch(e){ box.innerHTML = `<div class="muted">Fehler: ${esc(e.message)}</div>`; }
+}
+
+async function choosePlaylist(id, name){
+  LS.set('playlist', { id, name }); LS.del('tracks'); TRACKS = [];
+  $('plMsg').textContent = `„${name}“ – lade Songs …`;
+  try{
+    await loadTracks(true);
+    $('plMsg').textContent = `✓ „${name}“ gewählt – ${TRACKS.length} Songs.`;
+    $('st4').classList.add('done');
+    $('startBtn').disabled = !(normDb(LS.get('fb','')) && SP.tok);
+  }catch(e){
+    LS.del('playlist'); $('st4').classList.remove('done'); $('startBtn').disabled = true;
+    document.querySelectorAll('#plList .pl.sel').forEach(x => x.classList.remove('sel'));
+    $('plMsg').textContent = `✗ „${name}“: ${e.message}`;
+  }
+}
+
+async function playlistFromLink(){
+  const v = $('plLink').value.trim();
+  const m = v.match(/playlist[\/:]([A-Za-z0-9]{10,})/) || v.match(/^([A-Za-z0-9]{22})$/);
+  if (!m){ $('plMsg').textContent = '✗ Das sieht nicht nach einem Playlist-Link aus. In Spotify: Playlist → ••• → Teilen → Link zur Playlist kopieren.'; return; }
+  if (!SP.tok){ toast('Bitte zuerst bei Spotify anmelden.'); return; }
+  let name = 'Playlist';
+  try{ const j = await SP.json(`/playlists/${m[1]}?fields=name`); if (j && j.name) name = j.name; }catch(e){}
+  choosePlaylist(m[1], name);
 }
 
 let TRACKS = LS.get('tracks', []);
@@ -594,12 +637,17 @@ async function loadTracks(force){
     try{ j = await SP.json(url); }
     catch(e){
       // Fallback auf den alten Endpunkt-Namen
-      if (url.includes('/items?')){ url = url.replace('/items?', '/tracks?'); j = await SP.json(url); } else throw e;
+      if (url.includes('/items?')){
+        url = url.replace('/items?', '/tracks?');
+        try{ j = await SP.json(url); }
+        catch(e2){ throw new Error('Spotify gibt die Songs dieser Playlist nicht heraus (' + e.message + '). Ist es eine eigene Playlist?'); }
+      } else throw e;
     }
     for (const it of (j.items || [])){ const t = simplifyTrack(it.item || it.track); if (t) list.push(t); }
     url = j.next;
   }
   const seen = new Set(); list = list.filter(t => !seen.has(t.id) && seen.add(t.id));
+  if (!list.length) throw new Error('Spotify gibt die Songs dieser Playlist nicht heraus – sie gehört vermutlich nicht dir. Kopiere sie in eine eigene Playlist.');
   if (list.length < 4) throw new Error(`In der Playlist sind nur ${list.length} abspielbare Songs – es braucht mindestens 4 (besser 40+).`);
   TRACKS = list; LS.set('tracks', TRACKS);
 }
