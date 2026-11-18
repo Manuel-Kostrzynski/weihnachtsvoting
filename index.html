@@ -322,13 +322,20 @@ function startVoter(){
 
   let device = LS.get('device');
   if (!device){ device = randId(14); LS.set('device', device); }
-  let round = null, myVote = null, sending = false, lastRender = '';
+  let round = null, base = null, lastV = null, myVote = null, sending = false, lastRender = '';
 
+  // Spart Datenvolumen: alle 3 s nur den kleinen Knoten "live" (Status, Stimmen) holen;
+  // Songliste und "Jetzt läuft" nur, wenn sich die Runde oder der Song geändert hat.
   async function poll(){
     try{
-      const r = await FB.get('round');
-      round = r;
-      myVote = r && r.id ? LS.get('vote_' + r.id, null) : null;
+      const live = await FB.get('live');
+      if (!live || !live.id){ round = null; render(); return; }
+      if (!base || base.id !== live.id || live.v !== lastV){
+        base = await FB.get('round');
+        lastV = live.v;
+      }
+      round = base && base.id === live.id ? { ...base, ...live } : null;
+      myVote = round ? LS.get('vote_' + round.id, null) : null;
       render();
     }catch(e){
       if (!round) $('vBody').innerHTML = '<div class="wait"><h2>Keine Verbindung</h2>Prüfe dein Internet – es wird automatisch erneut versucht.</div>';
@@ -404,7 +411,7 @@ function startVoter(){
 
   setInterval(() => { const el = $('vCd'); if (el && round) el.textContent = fmt(round.closesAt - Date.now()); }, 1000);
   poll();
-  (async function loop(){ while(true){ await sleep(document.hidden ? 5000 : 2000); await poll(); } })();
+  (async function loop(){ while(true){ await sleep(3000); if (!document.hidden) await poll(); } })();
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 }
 
@@ -688,7 +695,10 @@ function onTrackChange(t){
 }
 
 function npObj(){ return NP && NP.track ? { name:NP.track.name, artist:NP.track.artist, img:NP.track.img } : null; }
-function pushNow(){ if (S.roundId) FB.patch('round', { now: npObj() }).catch(() => {}); }
+async function pushNow(){
+  if (!S.roundId) return;
+  try{ await FB.patch('round', { now: npObj() }); S.v = (S.v || 0) + 1; saveS(); await FB.patch('live', { v:S.v }); }catch(e){}
+}
 
 /* ---------- Rounds ---------- */
 function pickCandidates(){
@@ -720,7 +730,9 @@ async function startRound(){
   saveS(); lastTallyKey = ''; lastClosesWritten = S.closesAt;
   render();
   try{
-    await FB.put('round', { id:S.roundId, status:'open', candidates:S.cands, closesAt:S.closesAt, tally:S.tally, total:0, now:npObj() });
+    S.v = (S.v || 0) + 1; saveS();
+    await FB.put('round', { id:S.roundId, candidates:S.cands, now:npObj() });
+    await FB.put('live', { id:S.roundId, v:S.v, status:'open', closesAt:S.closesAt, tally:S.tally, total:0 });
     if (old) FB.del('votes/' + old).catch(() => {});
   }catch(e){ toast('Firebase: ' + e.message); }
 }
@@ -745,7 +757,7 @@ async function pollVotes(){
     const closeChanged = Math.abs(S.closesAt - lastClosesWritten) > 3000;
     if (key !== lastTallyKey || closeChanged){
       lastTallyKey = key; lastClosesWritten = S.closesAt;
-      await FB.patch('round', { tally, total, closesAt:S.closesAt });
+      await FB.patch('live', { tally, total, closesAt:S.closesAt });
     }
     render();
   }catch(e){ /* nächster Versuch in 2 s */ }
@@ -772,7 +784,7 @@ async function closeRound(manual){
     const w = top[Math.floor(Math.random() * top.length)];
     S.winner = w; S.winnerId = S.cands[w].id; S.status = 'closed'; S.closesAt = Date.now();
     saveS(); render();
-    await FB.patch('round', { status:'closed', winner:w, closesAt:S.closesAt, tally:S.tally, total:S.total }).catch(() => {});
+    await FB.patch('live', { status:'closed', winner:w, closesAt:S.closesAt, tally:S.tally, total:S.total }).catch(() => {});
     if (S.auto) await queueWinner(w);
   } finally { busy = false; }
 }
@@ -788,7 +800,7 @@ async function queueWinner(i){
     S.status = 'queued'; S.winner = i; S.winnerId = c.id;
     if (!S.played.includes(c.id)) S.played.push(c.id);
     saveS(); render();
-    FB.patch('round', { status:'closed', winner:i }).catch(() => {});
+    FB.patch('live', { status:'closed', winner:i }).catch(() => {});
   }catch(e){
     toast('Konnte den Song nicht in die Warteschlange legen: ' + e.message + ' – klicke auf den Song, um es erneut zu versuchen.');
     S.status = 'closed'; saveS(); render();
