@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Was läuft als Nächstes?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1f1a; --bg2:#12302a; --card:#173a33; --card2:#1d4740;
+    --line:rgba(255,255,255,.10); --text:#f4efe6; --muted:#a9bdb5;
+    --gold:#e9b44c; --gold2:#f6d48a; --red:#d9534f; --ok:#6fcf97;
+    --r:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;background:radial-gradient(1200px 600px at 80% -10%,#1f4a40 0%,transparent 60%),radial-gradient(900px 500px at -10% 110%,#3a2a12 0%,transparent 55%),var(--bg)}
+  h1,h2,h3{font-family:Fraunces,Georgia,serif;margin:0;letter-spacing:-.01em}
+  button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 18px;background:var(--gold);color:#2a1d05;font-weight:700}
+  button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  button.small{padding:8px 12px;font-size:14px}
+  button:disabled{opacity:.45;cursor:default}
+  input,select{font:inherit;width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:#0b1916;color:var(--text)}
+  label{display:block;font-size:14px;color:var(--muted);margin:0 0 6px}
+  code{background:#0b1916;border:1px solid var(--line);padding:2px 6px;border-radius:6px;font-size:13px;word-break:break-all}
+  a{color:var(--gold2)}
+  .hidden{display:none!important}
+  .muted{color:var(--muted)}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .cover{background:#0b1916 center/cover no-repeat;border-radius:10px;flex:none}
+  .snow{position:fixed;inset:0;pointer-events:none;opacity:.35;background-image:radial-gradient(2px 2px at 20px 30px,#fff 50%,transparent 51%),radial-gradient(1.5px 1.5px at 120px 80px,#fff 50%,transparent 51%),radial-gradient(1px 1px at 60px 140px,#fff 50%,transparent 51%),radial-gradient(2px 2px at 170px 170px,#fff 50%,transparent 51%);background-size:200px 200px;animation:snow 30s linear infinite}
+  @keyframes snow{to{background-position:0 1200px,0 1000px,0 800px,0 1100px}}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2b1717;border:1px solid #6b2e2c;color:#ffd9d7;padding:12px 18px;border-radius:12px;max-width:min(90vw,640px);z-index:50;font-size:15px}
+  .toast.info{background:#173a33;border-color:var(--line);color:var(--text)}
+
+  /* ---------- Setup ---------- */
+  .setup{max-width:760px;margin:0 auto;padding:40px 20px 80px;position:relative}
+  .setup h1{font-size:40px;margin-bottom:6px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-top:18px}
+  .step h3{font-size:20px;margin-bottom:10px;display:flex;gap:10px;align-items:center}
+  .num{width:28px;height:28px;border-radius:50%;display:inline-grid;place-items:center;background:var(--gold);color:#2a1d05;font:700 14px Inter}
+  .step.done .num{background:var(--ok)}
+  .step p{margin:6px 0 12px;line-height:1.5}
+  .pl-list{display:grid;gap:8px;max-height:360px;overflow:auto;margin-top:10px}
+  .pl{display:flex;gap:12px;align-items:center;padding:8px;border-radius:12px;border:1px solid var(--line);background:#0f2622;cursor:pointer;text-align:left;color:var(--text);font-weight:500}
+  .pl.sel{border-color:var(--gold);background:#2a2a14}
+  .pl .cover{width:44px;height:44px}
+
+  /* ---------- Host / Beamer ---------- */
+  .host{display:grid;grid-template-columns:1fr minmax(320px,32vw);gap:3vw;padding:3vw;min-height:100vh;position:relative}
+  .eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:13px;color:var(--gold2);font-weight:700}
+  .np{display:flex;gap:22px;align-items:center;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+  .np .cover{width:clamp(80px,9vw,140px);height:clamp(80px,9vw,140px)}
+  .np h2{font-size:clamp(24px,2.6vw,44px);line-height:1.1}
+  .np .artist{font-size:clamp(15px,1.3vw,22px);color:var(--muted);margin-top:4px}
+  .bar{height:6px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden;margin-top:14px}
+  .bar>i{display:block;height:100%;background:var(--gold);width:0;transition:width 1s linear}
+  .status{margin:26px 0 14px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .status h2{font-size:clamp(22px,2.2vw,38px)}
+  .pill{background:rgba(233,180,76,.15);color:var(--gold2);border:1px solid rgba(233,180,76,.35);padding:6px 14px;border-radius:99px;font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(14px,1.2vw,20px)}
+  .cands{display:grid;gap:14px}
+  .cand{position:relative;display:flex;gap:16px;align-items:center;padding:14px;border-radius:var(--r);background:var(--card);border:1px solid var(--line);overflow:hidden}
+  .cand .fill{position:absolute;inset:0;width:0;background:linear-gradient(90deg,rgba(233,180,76,.28),rgba(233,180,76,.12));transition:width .8s ease}
+  .cand>*:not(.fill){position:relative}
+  .cand .cover{width:clamp(56px,5.5vw,88px);height:clamp(56px,5.5vw,88px)}
+  .cand .t{font-weight:700;font-size:clamp(16px,1.5vw,26px);line-height:1.2}
+  .cand .a{color:var(--muted);font-size:clamp(13px,1.05vw,18px);margin-top:2px}
+  .cand .meta{flex:1;min-width:0}
+  .cand .meta>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cand .pct{font-family:Fraunces,serif;font-weight:800;font-size:clamp(22px,2.2vw,40px);font-variant-numeric:tabular-nums;min-width:3.2em;text-align:right}
+  .cand .cnt{font-size:13px;color:var(--muted);text-align:right}
+  .cand.win{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold) inset}
+  .cand.lose{opacity:.45}
+  .cand.clickable{cursor:pointer}
+  .qrbox{background:var(--text);color:#13241f;border-radius:24px;padding:26px;display:flex;flex-direction:column;align-items:center;text-align:center;align-self:start;position:sticky;top:3vw}
+  .qrbox h2{font-size:clamp(22px,2vw,34px);line-height:1.15;margin-bottom:14px}
+  #qr{width:100%;aspect-ratio:1;display:grid;place-items:center}
+  #qr img,#qr canvas,#qr svg{width:100%;height:auto;image-rendering:pixelated}
+  .qrbox .sub{font-size:15px;color:#4b5d57;margin-top:12px}
+  .qrbox .total{margin-top:14px;font-weight:700;font-size:18px}
+  .gear{position:fixed;top:14px;right:14px;z-index:20;opacity:.5}
+  .gear:hover{opacity:1}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,92vw);background:#0f2622;border-left:1px solid var(--line);z-index:30;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(0,0,0,.4)}
+  .drawer h3{font-size:22px;margin-bottom:14px}
+  .drawer section{border-top:1px solid var(--line);padding:16px 0}
+  .drawer .row button{flex:1}
+  .switch{display:flex;align-items:center;gap:10px;color:var(--text);font-size:15px;margin:0}
+  .switch input{width:auto}
+
+  /* ---------- Voter (Handy) ---------- */
+  .voter{max-width:520px;margin:0 auto;padding:22px 16px 40px;position:relative}
+  .voter h1{font-size:30px;line-height:1.1;margin:6px 0 4px}
+  .vnp{display:flex;gap:12px;align-items:center;margin:14px 0 18px;padding:10px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .vnp .cover{width:48px;height:48px}
+  .vnp .t{font-weight:600;font-size:15px}
+  .vnp .a{color:var(--muted);font-size:13px}
+  .vgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .vtile{position:relative;text-align:left;padding:0;background:var(--card);color:var(--text);border:2px solid transparent;border-radius:18px;overflow:hidden;font-weight:500;display:flex;flex-direction:column}
+  .vtile .cover{width:100%;aspect-ratio:1;border-radius:0}
+  .vtile .info{padding:10px 12px 12px}
+  .vtile .t{font-weight:700;font-size:15px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .vtile .a{color:var(--muted);font-size:13px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vtile.sel{border-color:var(--gold);background:#2c2a15}
+  .vtile .check{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:var(--gold);color:#2a1d05;display:none;place-items:center;font-weight:800}
+  .vtile.sel .check{display:grid}
+  .vtile .vbar{height:5px;background:rgba(255,255,255,.08)}
+  .vtile .vbar i{display:block;height:100%;background:var(--gold);width:0;transition:width .8s}
+  .vtile .vp{font-size:12px;color:var(--gold2);font-weight:700;margin-top:6px}
+  .vtile.win{border-color:var(--gold)}
+  .vtile.lose{opacity:.4}
+  .vstatus{margin:16px 0 0;text-align:center;font-size:15px;color:var(--muted);line-height:1.5}
+  .vstatus b{color:var(--text)}
+  .wait{text-align:center;padding:60px 10px;color:var(--muted)}
+  .wait h2{color:var(--text);font-size:26px;margin-bottom:8px}
+
+  @media (max-width:900px){
+    .host{grid-template-columns:1fr}
+    .qrbox{position:static;max-width:420px;justify-self:center;width:100%}
+  }
+  @media print{
+    body{background:#fff}
+    .snow,.gear,.drawer,.host>main,.toast{display:none!important}
+    .host{display:block;padding:0}
+    .qrbox{position:static;box-shadow:none;max-width:14cm;margin:2cm auto}
+  }
+</style>
+</head>
+<body>
+<div class="snow"></div>
+
+<!-- ================= SETUP ================= -->
+<div id="setup" class="setup hidden">
+  <div class="eyebrow">Weihnachtsfeier · Musik-Voting</div>
+  <h1>Was läuft als Nächstes?</h1>
+  <p class="muted">Einmal einrichten, dann läuft die Abstimmung von allein. Alle Einstellungen bleiben in diesem Browser gespeichert.</p>
+
+  <div class="step" id="st1">
+    <h3><span class="num">1</span> Stimmen-Speicher (Firebase)</h3>
+    <p>Hier landen die Stimmen der Gäste. Die URL deiner Firebase Realtime Database, z.&nbsp;B. <code>https://meine-feier-default-rtdb.europe-west1.firebasedatabase.app</code></p>
+    <div class="row">
+      <input id="fbUrl" placeholder="https://…firebasedatabase.app" style="flex:1;min-width:240px">
+      <button id="fbTest" class="small">Verbindung testen</button>
+    </div>
+    <p id="fbMsg" class="muted" style="margin-bottom:0"></p>
+  </div>
+
+  <div class="step" id="st2">
+    <h3><span class="num">2</span> Spotify-App</h3>
+    <p>Trage im <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify Developer Dashboard</a> bei deiner App genau diese Redirect URI ein:</p>
+    <div class="row"><code id="redirUri" style="flex:1"></code><button id="copyRedir" class="small ghost">Kopieren</button></div>
+    <p style="margin-top:14px">Und hier die <b>Client ID</b> der App einfügen:</p>
+    <input id="clientId" placeholder="Client ID (32 Zeichen)">
+  </div>
+
+  <div class="step" id="st3">
+    <h3><span class="num">3</span> Bei Spotify anmelden</h3>
+    <p id="loginMsg" class="muted">Du brauchst Spotify Premium. Nur du meldest dich an, die Gäste nicht.</p>
+    <div class="row"><button id="loginBtn">Mit Spotify anmelden</button><button id="logoutBtn" class="ghost small hidden">Abmelden</button></div>
+  </div>
+
+  <div class="step" id="st4">
+    <h3><span class="num">4</span> Playlist mit der Song-Auswahl</h3>
+    <p class="muted">Aus dieser Playlist werden pro Runde vier Songs gezogen. Wegen Spotifys API-Regeln muss es eine <b>eigene</b> Playlist (oder eine gemeinsame, bei der du mitarbeitest) sein.</p>
+    <button id="loadPl" class="small ghost">Playlists laden</button>
+    <div id="plList" class="pl-list"></div>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">5</span> Los geht's</h3>
+    <p class="muted">Starte die Musik in Spotify (App oder Web-Player) auf dem Gerät am Lautsprecher. Dann hier starten und den Bildschirm auf den Beamer legen.</p>
+    <button id="startBtn" disabled>Party starten</button>
+  </div>
+</div>
+
+<!-- ================= HOST / BEAMER ================= -->
+<div id="host" class="host hidden">
+  <main>
+    <div class="eyebrow" style="margin-bottom:10px">Jetzt läuft</div>
+    <div class="np">
+      <div id="npCover" class="cover"></div>
+      <div style="flex:1;min-width:0">
+        <h2 id="npTitle">–</h2>
+        <div id="npArtist" class="artist">Starte die Musik in Spotify</div>
+        <div class="bar"><i id="npBar"></i></div>
+      </div>
+    </div>
+    <div class="status">
+      <h2 id="hStatus">Gleich geht's los</h2>
+      <span id="hTimer" class="pill hidden"></span>
+    </div>
+    <div id="hCands" class="cands"></div>
+  </main>
+  <aside class="qrbox">
+    <h2>Stimm ab, was als Nächstes läuft!</h2>
+    <div id="qr"></div>
+    <div class="sub">Handy-Kamera auf den Code halten</div>
+    <div id="hTotal" class="total"></div>
+  </aside>
+</div>
+<button id="gear" class="gear ghost small hidden" title="Einstellungen">⚙︎</button>
+<div id="drawer" class="drawer hidden">
+  <div class="row" style="justify-content:space-between"><h3>Steuerung</h3><button id="closeDrawer" class="ghost small">Schließen</button></div>
+  <section>
+    <label>Runde</label>
+    <div class="row">
+      <button id="btnClose" class="small">Abstimmung jetzt beenden</button>
+      <button id="btnNew" class="small ghost">Neue Runde</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="btnSkip" class="small ghost">Zum nächsten Song springen</button>
+    </div>
+  </section>
+  <section>
+    <label class="switch"><input type="checkbox" id="optAuto" checked> Gewinner automatisch in die Warteschlange</label>
+    <p class="muted" style="font-size:13px;margin:8px 0 0">Aus = Notfall-Modus: Der Gewinner wird nur angezeigt, du spielst ihn selbst ab. Du kannst auch auf einen Song klicken, um ihn manuell in die Warteschlange zu legen.</p>
+  </section>
+  <section>
+    <label for="optLead">Abstimmung endet … Sekunden vor Songende</label>
+    <input id="optLead" type="number" min="8" max="120" step="1">
+    <label for="optMin" style="margin-top:12px">Mindestdauer einer Abstimmung (Sekunden)</label>
+    <input id="optMin" type="number" min="10" max="300" step="5">
+  </section>
+  <section>
+    <label>Link für die Gäste</label>
+    <code id="voteLink"></code>
+    <div class="row" style="margin-top:10px">
+      <button id="copyLink" class="small ghost">Link kopieren</button>
+      <button id="printQr" class="small ghost">QR-Code drucken</button>
+    </div>
+  </section>
+  <section>
+    <label>Sonstiges</label>
+    <div class="row">
+      <button id="btnSetup" class="small ghost">Zur Einrichtung</button>
+      <button id="btnResetPlayed" class="small ghost">Gespielte Songs zurücksetzen</button>
+    </div>
+    <p id="dbg" class="muted" style="font-size:12px;margin-top:12px"></p>
+  </section>
+</div>
+
+<!-- ================= VOTER ================= -->
+<div id="voter" class="voter hidden">
+  <div class="eyebrow">Weihnachtsfeier</div>
+  <h1>Was läuft als Nächstes?</h1>
+  <div id="vBody"><div class="wait"><h2>Einen Moment …</h2>Verbinde mit der Abstimmung.</div></div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ================= Helpers ================= */
+const $ = id => document.getElementById(id);
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem('sv_'+k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('sv_'+k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem('sv_'+k); }catch(e){} }
+};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const randId = (n=10) => { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join(''); };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const fmt = ms => { const s = Math.max(0, Math.ceil(ms/1000)); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); };
+let toastT;
+function toast(msg, info){ const t = $('toast'); t.textContent = msg; t.className = 'toast' + (info ? ' info' : ''); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), info ? 3500 : 7000); }
+const coverStyle = url => url ? `background-image:url('${esc(url)}')` : '';
+
+function normDb(u){
+  u = String(u || '').trim().replace(/\/+$/, '');
+  if (!u) return '';
+  if (!/^https?:\/\//.test(u)) u = 'https://' + u;
+  try{ const x = new URL(u); if (!/(firebasedatabase\.app|firebaseio\.com)$/.test(x.hostname)) return ''; return 'https://' + x.hostname; }catch(e){ return ''; }
+}
+
+/* ================= Firebase (REST) ================= */
+const FB = {
+  base: '', room: '',
+  url(p){ return `${this.base}/rooms/${this.room}/${p}.json`; },
+  async get(p){ const r = await fetch(this.url(p), {cache:'no-store'}); if (!r.ok) throw new Error('Firebase ' + r.status); return r.json(); },
+  async put(p, v){ const r = await fetch(this.url(p), {method:'PUT', body: JSON.stringify(v)}); if (!r.ok) throw new Error('Firebase ' + r.status); return r.json(); },
+  async patch(p, v){ const r = await fetch(this.url(p), {method:'PATCH', body: JSON.stringify(v)}); if (!r.ok) throw new Error('Firebase ' + r.status); return r.json(); },
+  async del(p){ await fetch(this.url(p), {method:'DELETE'}); }
+};
+
+/* ================= Routing ================= */
+const params = new URLSearchParams(location.search);
+const REDIRECT = location.origin + location.pathname.replace(/index\.html$/, '');
+
+/* Start: siehe Ende des Skripts */
+
+/* =====================================================================
+   VOTER
+   ===================================================================== */
+function startVoter(){
+  $('voter').classList.remove('hidden');
+  FB.base = normDb(params.get('db'));
+  FB.room = String(params.get('r')).replace(/[^a-z0-9]/gi, '').slice(0, 32);
+  if (!FB.base || !FB.room){ $('vBody').innerHTML = '<div class="wait"><h2>Ungültiger Link</h2>Bitte den QR-Code erneut scannen.</div>'; return; }
+
+  let device = LS.get('device');
+  if (!device){ device = randId(14); LS.set('device', device); }
+  let round = null, myVote = null, sending = false, lastRender = '';
+
+  async function poll(){
+    try{
+      const r = await FB.get('round');
+      round = r;
+      myVote = r && r.id ? LS.get('vote_' + r.id, null) : null;
+      render();
+    }catch(e){
+      if (!round) $('vBody').innerHTML = '<div class="wait"><h2>Keine Verbindung</h2>Prüfe dein Internet – es wird automatisch erneut versucht.</div>';
+    }
+  }
+
+  async function vote(i){
+    if (!round || round.status !== 'open' || sending) return;
+    if (Date.now() > round.closesAt + 1500) return;
+    const prev = myVote;
+    myVote = i; LS.set('vote_' + round.id, i); render(true);
+    sending = true;
+    try{ await FB.put(`votes/${round.id}/${device}`, i); if (navigator.vibrate) navigator.vibrate(20); }
+    catch(e){ myVote = prev; LS.set('vote_' + round.id, prev); render(true); toast('Stimme konnte nicht gesendet werden. Bitte nochmal tippen.'); }
+    sending = false;
+  }
+
+  function render(force){
+    const body = $('vBody');
+    if (!round || !round.candidates || !round.candidates.length){
+      const html = '<div class="wait"><h2>Gleich geht\'s los</h2>Die nächste Abstimmung startet in Kürze.</div>';
+      if (html !== lastRender){ body.innerHTML = html; lastRender = html; }
+      return;
+    }
+    const open = round.status === 'open';
+    const total = round.total || 0;
+    const tally = round.tally || [];
+    const showRes = !open || myVote !== null;
+    const np = round.now;
+    let html = '';
+    if (np && np.name){
+      html += `<div class="vnp"><div class="cover" style="${coverStyle(np.img)}"></div><div style="min-width:0"><div class="a">Jetzt läuft</div><div class="t">${esc(np.name)}</div><div class="a">${esc(np.artist)}</div></div></div>`;
+    }
+    html += '<div class="vgrid">';
+    round.candidates.forEach((c, i) => {
+      const pct = total ? Math.round((tally[i] || 0) / total * 100) : 0;
+      let cls = 'vtile';
+      if (myVote === i) cls += ' sel';
+      if (!open && round.winner === i) cls += ' win';
+      if (!open && round.winner !== undefined && round.winner !== null && round.winner !== i) cls += ' lose';
+      html += `<button class="${cls}" data-i="${i}" ${open ? '' : 'disabled'}>
+        <div class="cover" style="${coverStyle(c.img)}"></div>
+        <span class="check">✓</span>
+        <div class="vbar"><i style="width:${showRes ? pct : 0}%"></i></div>
+        <div class="info"><div class="t">${esc(c.name)}</div><div class="a">${esc(c.artist)}</div>${showRes ? `<div class="vp">${pct}&nbsp;%</div>` : ''}</div>
+      </button>`;
+    });
+    html += '</div>';
+    if (open){
+      html += `<div class="vstatus">${myVote === null ? '<b>Tippe auf deinen Favoriten.</b>' : '<b>Danke für deine Stimme!</b> Du kannst dich noch umentscheiden.'}<br>Abstimmung endet in <b id="vCd"></b></div>`;
+    } else {
+      const w = round.candidates[round.winner];
+      html += `<div class="vstatus">${w ? `<b>${esc(w.name)}</b> hat gewonnen und läuft als Nächstes.` : 'Abstimmung beendet.'}<br>Die nächste Runde startet, sobald der Song läuft.</div>`;
+    }
+    if (force || html !== lastRender){
+      body.innerHTML = html; lastRender = html;
+      body.querySelectorAll('.vtile').forEach(b => b.addEventListener('click', () => vote(+b.dataset.i)));
+    }
+    const cd = $('vCd'); if (cd) cd.textContent = fmt(round.closesAt - Date.now());
+  }
+
+  setInterval(() => { const el = $('vCd'); if (el && round) el.textContent = fmt(round.closesAt - Date.now()); }, 1000);
+  poll();
+  (async function loop(){ while(true){ await sleep(document.hidden ? 5000 : 2000); await poll(); } })();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+}
+
+/* =====================================================================
+   HOST: Spotify auth (PKCE)
+   ===================================================================== */
+const SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative';
+const SP = {
+  get clientId(){ return LS.get('clientId', ''); },
+  tok: LS.get('tok', null),
+  async login(){
+    const verifier = randId(64);
+    LS.set('pkce', verifier);
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    const challenge = btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+    const q = new URLSearchParams({ response_type:'code', client_id:this.clientId, scope:SCOPES, code_challenge_method:'S256', code_challenge:challenge, redirect_uri:REDIRECT });
+    location.href = 'https://accounts.spotify.com/authorize?' + q;
+  },
+  async handleCallback(){
+    const code = params.get('code'), err = params.get('error');
+    if (!code && !err) return;
+    history.replaceState(null, '', REDIRECT);
+    if (err){ toast('Spotify-Anmeldung abgebrochen: ' + err); return; }
+    const r = await fetch('https://accounts.spotify.com/api/token', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({ grant_type:'authorization_code', code, redirect_uri:REDIRECT, client_id:this.clientId, code_verifier:LS.get('pkce','') }) });
+    const j = await r.json();
+    if (!r.ok){ toast('Spotify-Anmeldung fehlgeschlagen: ' + (j.error_description || j.error || r.status)); return; }
+    this.save(j);
+  },
+  save(j){
+    this.tok = { access:j.access_token, refresh:j.refresh_token || (this.tok && this.tok.refresh), exp: Date.now() + (j.expires_in - 60) * 1000 };
+    LS.set('tok', this.tok);
+  },
+  logout(){ this.tok = null; LS.del('tok'); },
+  async refresh(){
+    if (!this.tok || !this.tok.refresh) throw new Error('nicht angemeldet');
+    const r = await fetch('https://accounts.spotify.com/api/token', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({ grant_type:'refresh_token', refresh_token:this.tok.refresh, client_id:this.clientId }) });
+    const j = await r.json();
+    if (!r.ok){ this.logout(); throw new Error('Spotify-Sitzung abgelaufen – bitte neu anmelden'); }
+    this.save(j);
+  },
+  async api(path, opt = {}, retry = true){
+    if (!this.tok) throw new Error('nicht angemeldet');
+    if (Date.now() > this.tok.exp) await this.refresh();
+    const url = path.startsWith('http') ? path : 'https://api.spotify.com/v1' + path;
+    const r = await fetch(url, { ...opt, headers:{ Authorization:'Bearer ' + this.tok.access, ...(opt.headers || {}) } });
+    if (r.status === 401 && retry){ await this.refresh(); return this.api(path, opt, false); }
+    if (r.status === 429){ const s = +(r.headers.get('Retry-After') || 5); await sleep(s * 1000); if (retry) return this.api(path, opt, false); }
+    return r;
+  },
+  async json(path){ const r = await this.api(path); if (r.status === 204) return null; const j = await r.json().catch(() => null); if (!r.ok) throw new Error((j && j.error && j.error.message) || ('Spotify ' + r.status)); return j; }
+};
+
+function simplifyTrack(t){
+  if (!t || t.type !== 'track' || t.is_local || !t.id) return null;
+  const imgs = (t.album && t.album.images) || [];
+  const img = (imgs.find(i => i.width && i.width <= 320 && i.width >= 200) || imgs[1] || imgs[0] || {}).url || '';
+  return { id:t.id, uri:t.uri, name:t.name, artist:(t.artists || []).map(a => a.name).join(', '), img, dur:t.duration_ms };
+}
+
+/* =====================================================================
+   HOST: App
+   ===================================================================== */
+async function startHostApp(){
+  try{ await SP.handleCallback(); }catch(e){ toast('Anmeldung fehlgeschlagen: ' + e.message); }
+  if (LS.get('running', false) && SP.tok && LS.get('fb', '') && LS.get('playlist', null)) startParty();
+  else showSetup();
+}
+
+/* ---------- Setup screen ---------- */
+async function showSetup(){
+  $('host').classList.add('hidden'); $('gear').classList.add('hidden'); $('drawer').classList.add('hidden');
+  $('setup').classList.remove('hidden');
+  $('redirUri').textContent = REDIRECT;
+  $('fbUrl').value = LS.get('fb', '');
+  $('clientId').value = LS.get('clientId', '');
+  if (!window.isSecureContext) toast('Die Seite muss über https:// laufen (oder http://127.0.0.1), sonst klappt die Spotify-Anmeldung nicht.');
+
+  const refresh = async () => {
+    const fbOk = !!normDb(LS.get('fb', ''));
+    $('st1').classList.toggle('done', fbOk && LS.get('fbOk', false));
+    $('st2').classList.toggle('done', /^[a-f0-9]{32}$/i.test(LS.get('clientId', '')));
+    const logged = !!SP.tok;
+    $('st3').classList.toggle('done', logged);
+    $('logoutBtn').classList.toggle('hidden', !logged);
+    $('loginBtn').textContent = logged ? 'Neu anmelden' : 'Mit Spotify anmelden';
+    const pl = LS.get('playlist', null);
+    $('st4').classList.toggle('done', !!pl);
+    $('startBtn').disabled = !(fbOk && logged && pl);
+  };
+
+  $('fbUrl').onchange = () => { const v = normDb($('fbUrl').value); LS.set('fb', v); LS.set('fbOk', false); if (v) $('fbUrl').value = v; else if ($('fbUrl').value) $('fbMsg').textContent = 'Das sieht nicht nach einer Firebase-Realtime-Database-URL aus.'; refresh(); };
+  $('fbTest').onclick = async () => {
+    $('fbUrl').onchange();
+    const base = LS.get('fb', '');
+    if (!base) return;
+    $('fbMsg').textContent = 'Teste …';
+    try{
+      const r = await fetch(base + '/rooms/_test.json', { method:'PUT', body: JSON.stringify({ t: Date.now() }) });
+      if (r.status === 401 || r.status === 403) throw new Error('Zugriff verweigert – sind die Regeln auf „Testmodus“ gestellt?');
+      if (!r.ok) throw new Error('Fehler ' + r.status);
+      await fetch(base + '/rooms/_test.json', { method:'DELETE' });
+      LS.set('fbOk', true);
+      $('fbMsg').textContent = '✓ Verbindung klappt.';
+    }catch(e){ LS.set('fbOk', false); $('fbMsg').textContent = '✗ ' + (e.message || 'Keine Verbindung'); }
+    refresh();
+  };
+  $('clientId').oninput = () => { LS.set('clientId', $('clientId').value.trim()); refresh(); };
+  $('copyRedir').onclick = () => { navigator.clipboard.writeText(REDIRECT).then(() => toast('Kopiert', true)); };
+  $('loginBtn').onclick = () => {
+    if (!/^[a-f0-9]{32}$/i.test(LS.get('clientId', ''))){ toast('Bitte zuerst die Client ID aus dem Spotify-Dashboard eintragen.'); return; }
+    SP.login();
+  };
+  $('logoutBtn').onclick = () => { SP.logout(); refresh(); };
+  $('loadPl').onclick = loadPlaylists;
+  $('startBtn').onclick = async () => {
+    $('startBtn').disabled = true; $('startBtn').textContent = 'Lade Songs …';
+    try{ await loadTracks(true); LS.set('running', true); startParty(); }
+    catch(e){ toast(e.message); }
+    $('startBtn').textContent = 'Party starten'; refresh();
+  };
+
+  refresh();
+  if (SP.tok) loadPlaylists();
+}
+
+async function loadPlaylists(){
+  const box = $('plList');
+  if (!SP.tok){ toast('Bitte zuerst bei Spotify anmelden.'); return; }
+  box.innerHTML = '<div class="muted">Lade …</div>';
+  try{
+    const me = await SP.json('/me');
+    let url = '/me/playlists?limit=50', all = [];
+    while (url && all.length < 300){ const j = await SP.json(url); all = all.concat(j.items || []); url = j.next; }
+    const usable = all.filter(p => p && (p.collaborative || (p.owner && p.owner.id === me.id)));
+    const sel = LS.get('playlist', null);
+    if (!usable.length){ box.innerHTML = '<div class="muted">Keine eigene Playlist gefunden. Lege in Spotify eine Playlist an (z.&nbsp;B. „Weihnachtsfeier“) und lade die Liste neu.</div>'; return; }
+    box.innerHTML = usable.map(p => {
+      const n = (p.items && p.items.total) ?? (p.tracks && p.tracks.total) ?? '';
+      const img = (p.images && p.images[0] && p.images[0].url) || '';
+      return `<button class="pl ${sel && sel.id === p.id ? 'sel' : ''}" data-id="${esc(p.id)}" data-name="${esc(p.name)}"><div class="cover" style="${coverStyle(img)}"></div><div><div>${esc(p.name)}</div><div class="muted" style="font-size:13px">${n !== '' ? n + ' Songs' : ''}</div></div></button>`;
+    }).join('');
+    box.querySelectorAll('.pl').forEach(b => b.onclick = () => {
+      LS.set('playlist', { id:b.dataset.id, name:b.dataset.name }); LS.del('tracks');
+      box.querySelectorAll('.pl').forEach(x => x.classList.toggle('sel', x === b));
+      $('st4').classList.add('done');
+      $('startBtn').disabled = !(normDb(LS.get('fb','')) && SP.tok);
+    });
+  }catch(e){ box.innerHTML = `<div class="muted">Fehler: ${esc(e.message)}</div>`; }
+}
+
+let TRACKS = LS.get('tracks', []);
+async function loadTracks(force){
+  const pl = LS.get('playlist', null);
+  if (!pl) throw new Error('Keine Playlist gewählt');
+  if (!force && TRACKS.length) return;
+  let url = `/playlists/${pl.id}/items?limit=50`, list = [];
+  while (url){
+    let j;
+    try{ j = await SP.json(url); }
+    catch(e){
+      // Fallback auf den alten Endpunkt-Namen
+      if (url.includes('/items?')){ url = url.replace('/items?', '/tracks?'); j = await SP.json(url); } else throw e;
+    }
+    for (const it of (j.items || [])){ const t = simplifyTrack(it.item || it.track); if (t) list.push(t); }
+    url = j.next;
+  }
+  const seen = new Set(); list = list.filter(t => !seen.has(t.id) && seen.add(t.id));
+  if (list.length < 4) throw new Error(`In der Playlist sind nur ${list.length} abspielbare Songs – es braucht mindestens 4 (besser 40+).`);
+  TRACKS = list; LS.set('tracks', TRACKS);
+}
+
+/* ---------- Party ---------- */
+let S;              // persistent host state
+let NP = null;      // now playing { track, progress, isPlaying, at }
+let lastTallyKey = '', lastClosesWritten = 0, busy = false;
+
+function saveS(){ LS.set('state', S); }
+
+async function startParty(){
+  $('setup').classList.add('hidden');
+  $('host').classList.remove('hidden'); $('gear').classList.remove('hidden');
+  FB.base = LS.get('fb', '');
+  S = LS.get('state', null) || {};
+  if (!S.room){ S.room = randId(8); }
+  S.played = S.played || [];
+  S.lead = S.lead || 25; S.minVote = S.minVote || 45;
+  S.auto = S.auto !== false;
+  saveS();
+  FB.room = S.room;
+
+  try{ await loadTracks(false); }catch(e){ toast(e.message); }
+
+  const link = `${REDIRECT}?r=${S.room}&db=${encodeURIComponent(FB.base.replace('https://',''))}`;
+  $('voteLink').textContent = link;
+  drawQr(link);
+  setupDrawer(link);
+
+  render();
+  pollSpotify();
+  setInterval(pollSpotify, 4000);
+  setInterval(pollVotes, 2000);
+  setInterval(tick, 1000);
+}
+
+function drawQr(link){
+  const box = $('qr');
+  try{
+    const q = qrcode(0, 'M'); q.addData(link); q.make();
+    box.innerHTML = q.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+  }catch(e){
+    box.innerHTML = `<img alt="QR-Code" src="https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=0&data=${encodeURIComponent(link)}">`;
+  }
+}
+
+function setupDrawer(link){
+  $('gear').onclick = () => $('drawer').classList.toggle('hidden');
+  $('closeDrawer').onclick = () => $('drawer').classList.add('hidden');
+  $('optAuto').checked = S.auto;
+  $('optAuto').onchange = () => { S.auto = $('optAuto').checked; saveS(); render(); };
+  $('optLead').value = S.lead; $('optLead').onchange = () => { S.lead = Math.max(8, +$('optLead').value || 25); saveS(); };
+  $('optMin').value = S.minVote; $('optMin').onchange = () => { S.minVote = Math.max(10, +$('optMin').value || 45); saveS(); };
+  $('btnClose').onclick = () => { if (S.status === 'open') closeRound(true); };
+  $('btnNew').onclick = () => startRound();
+  $('btnSkip').onclick = async () => { try{ const r = await SP.api('/me/player/next', { method:'POST' }); if (!r.ok && r.status !== 204) throw new Error('Spotify ' + r.status); setTimeout(pollSpotify, 800); }catch(e){ toast('Überspringen ging nicht: ' + e.message); } };
+  $('copyLink').onclick = () => navigator.clipboard.writeText(link).then(() => toast('Link kopiert', true));
+  $('printQr').onclick = () => { $('drawer').classList.add('hidden'); setTimeout(() => window.print(), 100); };
+  $('btnSetup').onclick = () => { LS.set('running', false); location.href = REDIRECT; };
+  $('btnResetPlayed').onclick = () => { S.played = []; saveS(); toast('Zurückgesetzt – alle Songs können wieder gezogen werden.', true); };
+}
+
+/* ---------- Spotify polling ---------- */
+let spErrShown = 0;
+async function pollSpotify(){
+  try{
+    const r = await SP.api('/me/player/currently-playing');
+    if (r.status === 204){ NP = null; render(); return; }
+    const j = await r.json().catch(() => null);
+    if (!r.ok) throw new Error((j && j.error && j.error.message) || ('Spotify ' + r.status));
+    const t = simplifyTrack(j && j.item);
+    const prevId = NP && NP.track && NP.track.id;
+    NP = t ? { track:t, progress:j.progress_ms || 0, isPlaying:!!j.is_playing, at:Date.now() } : null;
+    if (t && t.id !== prevId && t.id !== S.lastTrackId) onTrackChange(t);
+    render();
+  }catch(e){
+    if (Date.now() - spErrShown > 30000){ toast('Spotify: ' + e.message); spErrShown = Date.now(); }
+  }
+}
+
+function onTrackChange(t){
+  S.lastTrackId = t.id;
+  if (!S.played.includes(t.id)) S.played.push(t.id);
+  if (S.played.length > 2000) S.played = S.played.slice(-1000);
+  if (S.status === 'queued'){
+    S.changes = (S.changes || 0) + 1;
+    if (t.id === S.winnerId || S.changes >= 2){ saveS(); startRound(); return; }
+  } else if (S.status === 'closed'){
+    // Notfall-Modus / Warteschlange fehlgeschlagen: neue Runde, sobald ein neuer Song läuft
+    saveS(); startRound(); return;
+  }
+  saveS();
+  pushNow();
+}
+
+function npObj(){ return NP && NP.track ? { name:NP.track.name, artist:NP.track.artist, img:NP.track.img } : null; }
+function pushNow(){ if (S.roundId) FB.patch('round', { now: npObj() }).catch(() => {}); }
+
+/* ---------- Rounds ---------- */
+function pickCandidates(){
+  const curId = NP && NP.track && NP.track.id;
+  const lastCands = new Set((S.cands || []).map(c => c.id));
+  const played = new Set(S.played);
+  let pool = TRACKS.filter(t => t.id !== curId && !played.has(t.id) && !lastCands.has(t.id));
+  if (pool.length < 4){
+    // Playlist "durch": nur die letzten 15 gespielten Songs ausschließen
+    const recent = new Set(S.played.slice(-15));
+    pool = TRACKS.filter(t => t.id !== curId && !recent.has(t.id));
+    if (pool.length < 4) pool = TRACKS.filter(t => t.id !== curId);
+  }
+  const a = pool.slice();
+  for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, 4).map(t => ({ id:t.id, uri:t.uri, name:t.name, artist:t.artist, img:t.img }));
+}
+
+async function startRound(){
+  if (!TRACKS.length){ toast('Keine Songs geladen.'); return; }
+  const old = S.roundId;
+  S.roundId = Date.now().toString(36);
+  S.cands = pickCandidates();
+  S.status = 'open';
+  S.startedAt = Date.now();
+  S.closesAt = calcClose();
+  S.tally = [0,0,0,0]; S.total = 0;
+  S.winner = null; S.winnerId = null; S.changes = 0;
+  saveS(); lastTallyKey = ''; lastClosesWritten = S.closesAt;
+  render();
+  try{
+    await FB.put('round', { id:S.roundId, status:'open', candidates:S.cands, closesAt:S.closesAt, tally:S.tally, total:0, now:npObj() });
+    if (old) FB.del('votes/' + old).catch(() => {});
+  }catch(e){ toast('Firebase: ' + e.message); }
+}
+
+function calcClose(){
+  const minEnd = (S.startedAt || Date.now()) + S.minVote * 1000;
+  if (!NP || !NP.track) return minEnd + 60000;
+  const elapsed = NP.isPlaying ? Date.now() - NP.at : 0;
+  const remaining = NP.track.dur - NP.progress - elapsed;
+  const end = Date.now() + remaining - S.lead * 1000;
+  return Math.max(minEnd, end);
+}
+
+async function pollVotes(){
+  if (!S || S.status !== 'open' || !S.roundId) return;
+  try{
+    const v = await FB.get('votes/' + S.roundId) || {};
+    const tally = [0,0,0,0]; let total = 0;
+    for (const k in v){ const i = +v[k]; if (i >= 0 && i < 4){ tally[i]++; total++; } }
+    S.tally = tally; S.total = total;
+    const key = tally.join(',');
+    const closeChanged = Math.abs(S.closesAt - lastClosesWritten) > 3000;
+    if (key !== lastTallyKey || closeChanged){
+      lastTallyKey = key; lastClosesWritten = S.closesAt;
+      await FB.patch('round', { tally, total, closesAt:S.closesAt });
+    }
+    render();
+  }catch(e){ /* nächster Versuch in 2 s */ }
+}
+
+function tick(){
+  if (!S) return;
+  if (!S.roundId || !S.cands || !S.cands.length){ if (TRACKS.length) startRound(); return; }
+  if (S.status === 'open'){
+    if (NP && NP.isPlaying) S.closesAt = calcClose();
+    else if (NP && !NP.isPlaying) S.closesAt = Math.max(S.closesAt, Date.now() + 5000); // pausiert: nicht schließen
+    if (Date.now() >= S.closesAt) closeRound(false);
+  }
+  render(true);
+}
+
+async function closeRound(manual){
+  if (busy || S.status !== 'open') return;
+  busy = true;
+  try{
+    await pollVotes().catch(() => {});
+    const max = Math.max(...S.tally);
+    const top = S.tally.map((n, i) => n === max ? i : -1).filter(i => i >= 0);
+    const w = top[Math.floor(Math.random() * top.length)];
+    S.winner = w; S.winnerId = S.cands[w].id; S.status = 'closed'; S.closesAt = Date.now();
+    saveS(); render();
+    await FB.patch('round', { status:'closed', winner:w, closesAt:S.closesAt, tally:S.tally, total:S.total }).catch(() => {});
+    if (S.auto) await queueWinner(w);
+  } finally { busy = false; }
+}
+
+async function queueWinner(i){
+  const c = S.cands[i];
+  try{
+    const r = await SP.api('/me/player/queue?uri=' + encodeURIComponent(c.uri), { method:'POST' });
+    if (!r.ok && r.status !== 204){
+      const j = await r.json().catch(() => null);
+      throw new Error(r.status === 404 ? 'Kein aktives Spotify-Gerät – läuft die Musik?' : ((j && j.error && j.error.message) || 'Spotify ' + r.status));
+    }
+    S.status = 'queued'; S.winner = i; S.winnerId = c.id; S.changes = 0;
+    if (!S.played.includes(c.id)) S.played.push(c.id);
+    saveS(); render();
+    FB.patch('round', { status:'closed', winner:i }).catch(() => {});
+  }catch(e){
+    toast('Konnte den Song nicht in die Warteschlange legen: ' + e.message + ' – klicke auf den Song, um es erneut zu versuchen.');
+    S.status = 'closed'; saveS(); render();
+  }
+}
+
+/* ---------- Host render ---------- */
+let lastCandKey = '';
+function render(light){
+  if (!S) return;
+  // Now playing
+  if (NP && NP.track){
+    $('npTitle').textContent = NP.track.name;
+    $('npArtist').textContent = NP.track.artist + (NP.isPlaying ? '' : ' · pausiert');
+    $('npCover').style.backgroundImage = NP.track.img ? `url('${NP.track.img}')` : '';
+    const prog = NP.progress + (NP.isPlaying ? Date.now() - NP.at : 0);
+    $('npBar').style.width = Math.min(100, prog / NP.track.dur * 100) + '%';
+  } else {
+    $('npTitle').textContent = '–';
+    $('npArtist').textContent = 'Starte die Musik in Spotify';
+    $('npCover').style.backgroundImage = ''; $('npBar').style.width = '0';
+  }
+
+  const timer = $('hTimer');
+  if (S.status === 'open'){
+    $('hStatus').textContent = 'Was läuft als Nächstes?';
+    timer.classList.remove('hidden'); timer.textContent = 'noch ' + fmt(S.closesAt - Date.now());
+  } else if (S.status === 'queued'){
+    $('hStatus').textContent = 'Gewonnen – läuft als Nächstes:';
+    timer.classList.add('hidden');
+  } else if (S.status === 'closed'){
+    $('hStatus').textContent = S.auto ? 'Gewonnen:' : 'Gewonnen – jetzt abspielen:';
+    timer.classList.remove('hidden'); timer.textContent = S.auto ? 'Warteschlange fehlgeschlagen – Song anklicken' : 'Song anklicken = Warteschlange';
+  } else {
+    $('hStatus').textContent = 'Gleich geht\'s los'; timer.classList.add('hidden');
+  }
+  $('hTotal').textContent = S.status === 'open' ? (S.total === 1 ? '1 Stimme' : (S.total || 0) + ' Stimmen') : '';
+
+  const cands = S.cands || [];
+  const key = S.roundId + S.status + S.winner;
+  const box = $('hCands');
+  if (key !== lastCandKey){
+    lastCandKey = key;
+    box.innerHTML = cands.map((c, i) => {
+      let cls = 'cand';
+      if (S.status !== 'open' && S.winner !== null){ cls += S.winner === i ? ' win' : ' lose'; }
+      if (S.status === 'closed') cls += ' clickable';
+      return `<div class="${cls}" data-i="${i}"><div class="fill"></div><div class="cover" style="${coverStyle(c.img)}"></div><div class="meta"><div class="t">${esc(c.name)}</div><div class="a">${esc(c.artist)}</div></div><div><div class="pct">0&nbsp;%</div><div class="cnt"></div></div></div>`;
+    }).join('');
+    box.querySelectorAll('.cand').forEach(el => el.onclick = () => {
+      if (S.status !== 'closed') return;
+      const i = +el.dataset.i; S.winner = i; S.winnerId = S.cands[i].id; lastCandKey = '';
+      queueWinner(i);
+    });
+  }
+  const total = S.total || 0;
+  box.querySelectorAll('.cand').forEach((el, i) => {
+    const n = (S.tally || [])[i] || 0; const pct = total ? Math.round(n / total * 100) : 0;
+    el.querySelector('.fill').style.width = pct + '%';
+    el.querySelector('.pct').innerHTML = pct + '&nbsp;%';
+    el.querySelector('.cnt').textContent = n === 1 ? '1 Stimme' : n + ' Stimmen';
+  });
+  $('dbg').textContent = `Raum ${S.room} · ${TRACKS.length} Songs · ${S.played.length} gespielt · Status ${S.status || '–'}`;
+}
+
+/* ================= Start ================= */
+if (params.get('r') && params.get('db')) startVoter();
+else startHostApp();
+
+})();
+</script>
+</body>
+</html>
