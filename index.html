@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Was läuft als Nächstes?</title>
+<meta name="theme-color" content="#0d1f1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -90,16 +94,21 @@
   .switch input{width:auto}
 
   /* ---------- Voter (Handy) ---------- */
-  .voter{max-width:520px;margin:0 auto;padding:22px 16px 40px;position:relative}
-  .voter h1{font-size:30px;line-height:1.1;margin:6px 0 4px}
-  .vnp{display:flex;gap:12px;align-items:center;margin:14px 0 18px;padding:10px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  body.vmode{height:100dvh;overflow:hidden;overscroll-behavior:none}
+  .voter{max-width:520px;margin:0 auto;position:relative;height:100dvh;display:flex;flex-direction:column;
+    padding:max(14px,env(safe-area-inset-top)) 14px max(12px,env(safe-area-inset-bottom))}
+  .voter .eyebrow{font-size:11px}
+  .voter h1{font-size:clamp(20px,6.2vw,28px);line-height:1.1;margin:4px 0 0}
+  #vBody{flex:1;min-height:0;display:flex;flex-direction:column}
+  .vnp{display:flex;gap:12px;align-items:center;margin:10px 0;padding:8px 10px;flex:none;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
   .vnp .cover{width:48px;height:48px}
   .vnp .t{font-weight:600;font-size:15px}
   .vnp .a{color:var(--muted);font-size:13px}
-  .vgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .vtile{position:relative;text-align:left;padding:0;background:var(--card);color:var(--text);border:2px solid transparent;border-radius:18px;overflow:hidden;font-weight:500;display:flex;flex-direction:column}
-  .vtile .cover{width:100%;aspect-ratio:1;border-radius:0}
-  .vtile .info{padding:10px 12px 12px}
+  .vgrid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;flex:1;min-height:0}
+  .vtile{position:relative;text-align:left;padding:0;background:var(--card);color:var(--text);border:2px solid transparent;border-radius:18px;overflow:hidden;font-weight:500;display:flex;flex-direction:column;min-height:0}
+  .vtile .cover{width:100%;flex:1;min-height:40px;border-radius:0}
+  .vtile .info{flex:none}
+  .vtile .info{padding:8px 10px 10px}
   .vtile .t{font-weight:700;font-size:15px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .vtile .a{color:var(--muted);font-size:13px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .vtile.sel{border-color:var(--gold);background:#2c2a15}
@@ -110,9 +119,9 @@
   .vtile .vp{font-size:12px;color:var(--gold2);font-weight:700;margin-top:6px}
   .vtile.win{border-color:var(--gold)}
   .vtile.lose{opacity:.4}
-  .vstatus{margin:16px 0 0;text-align:center;font-size:15px;color:var(--muted);line-height:1.5}
+  .vstatus{margin:10px 0 0;text-align:center;font-size:14px;color:var(--muted);line-height:1.45;flex:none}
   .vstatus b{color:var(--text)}
-  .wait{text-align:center;padding:60px 10px;color:var(--muted)}
+  .wait{text-align:center;padding:60px 10px;color:var(--muted);margin:auto 0}
   .wait h2{color:var(--text);font-size:26px;margin-bottom:8px}
 
   @media (max-width:900px){
@@ -231,6 +240,15 @@
     </div>
   </section>
   <section>
+    <label>Playlist</label>
+    <div id="curPl" style="font-weight:600;margin-bottom:10px"></div>
+    <div class="row">
+      <button id="btnPl" class="small ghost">Playlist wechseln</button>
+      <button id="btnReload" class="small ghost">Songs neu laden</button>
+    </div>
+    <p class="muted" style="font-size:13px;margin:8px 0 0">„Songs neu laden“, wenn du in Spotify Songs zur Playlist hinzugefügt oder entfernt hast.</p>
+  </section>
+  <section>
     <label>Sonstiges</label>
     <div class="row">
       <button id="btnSetup" class="small ghost">Zur Einrichtung</button>
@@ -297,6 +315,7 @@ const REDIRECT = location.origin + location.pathname.replace(/index\.html$/, '')
    ===================================================================== */
 function startVoter(){
   $('voter').classList.remove('hidden');
+  document.body.classList.add('vmode');
   FB.base = normDb(params.get('db'));
   FB.room = String(params.get('r')).replace(/[^a-z0-9]/gi, '').slice(0, 32);
   if (!FB.base || !FB.room){ $('vBody').innerHTML = '<div class="wait"><h2>Ungültiger Link</h2>Bitte den QR-Code erneut scannen.</div>'; return; }
@@ -315,6 +334,18 @@ function startVoter(){
       if (!round) $('vBody').innerHTML = '<div class="wait"><h2>Keine Verbindung</h2>Prüfe dein Internet – es wird automatisch erneut versucht.</div>';
     }
   }
+
+  // Vollbild beim ersten Tippen (klappt auf Android; Safari auf dem iPhone erlaubt es für Webseiten nicht)
+  let fsTried = false;
+  function goFullscreen(){
+    if (fsTried) return; fsTried = true;
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req && !document.fullscreenElement && !document.webkitFullscreenElement){
+      try{ const p = req.call(el, { navigationUI:'hide' }); if (p && p.catch) p.catch(() => {}); }catch(e){}
+    }
+  }
+  document.addEventListener('pointerup', goFullscreen, { once:true });
 
   async function vote(i){
     if (!round || round.status !== 'open' || sending) return;
@@ -499,6 +530,7 @@ async function showSetup(){
 
   refresh();
   if (SP.tok) loadPlaylists();
+  if (LS.get('plFocus', false)){ LS.del('plFocus'); setTimeout(() => $('st4').scrollIntoView({ behavior:'smooth', block:'center' }), 300); }
 }
 
 async function loadPlaylists(){
@@ -575,9 +607,20 @@ async function startParty(){
 
   render();
   pollSpotify();
-  setInterval(pollSpotify, 4000);
-  setInterval(pollVotes, 2000);
-  setInterval(tick, 1000);
+  // Taktgeber in einem Worker: läuft auch weiter, wenn der Tab im Hintergrund ist (Browser drosseln sonst normale Timer)
+  let n = 0;
+  const beat = () => { n++; tick(); if (n % 2 === 0) pollVotes(); if (n % 4 === 0) pollSpotify(); };
+  try{
+    const w = new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),1000)'], { type:'text/javascript' })));
+    w.onmessage = beat;
+  }catch(e){ setInterval(beat, 1000); }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden){ pollSpotify(); keepAwake(); } });
+  keepAwake();
+}
+
+let wakeLock = null;
+async function keepAwake(){
+  try{ if ('wakeLock' in navigator && !wakeLock){ wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } }catch(e){}
 }
 
 function drawQr(link){
@@ -603,6 +646,13 @@ function setupDrawer(link){
   $('copyLink').onclick = () => navigator.clipboard.writeText(link).then(() => toast('Link kopiert', true));
   $('printQr').onclick = () => { $('drawer').classList.add('hidden'); setTimeout(() => window.print(), 100); };
   $('btnSetup').onclick = () => { LS.set('running', false); location.href = REDIRECT; };
+  const pl = LS.get('playlist', null);
+  $('curPl').textContent = pl ? `${pl.name} · ${TRACKS.length} Songs` : '–';
+  $('btnPl').onclick = () => { LS.set('running', false); LS.set('plFocus', true); location.href = REDIRECT; };
+  $('btnReload').onclick = async () => {
+    try{ await loadTracks(true); $('curPl').textContent = `${pl.name} · ${TRACKS.length} Songs`; toast(`${TRACKS.length} Songs geladen – gilt ab der nächsten Runde.`, true); }
+    catch(e){ toast(e.message); }
+  };
   $('btnResetPlayed').onclick = () => { S.played = []; saveS(); toast('Zurückgesetzt – alle Songs können wieder gezogen werden.', true); };
 }
 
@@ -628,11 +678,9 @@ function onTrackChange(t){
   S.lastTrackId = t.id;
   if (!S.played.includes(t.id)) S.played.push(t.id);
   if (S.played.length > 2000) S.played = S.played.slice(-1000);
-  if (S.status === 'queued'){
-    S.changes = (S.changes || 0) + 1;
-    if (t.id === S.winnerId || S.changes >= 2){ saveS(); startRound(); return; }
-  } else if (S.status === 'closed'){
-    // Notfall-Modus / Warteschlange fehlgeschlagen: neue Runde, sobald ein neuer Song läuft
+  // Runde vorbei (Gewinner in der Warteschlange oder manuell): Jeder Songwechsel startet die nächste Runde.
+  // Hinweis: Spotify spielt manchmal dieselbe Aufnahme unter einer anderen Track-ID ab, daher kein ID-Vergleich.
+  if (S.status === 'queued' || S.status === 'closed'){
     saveS(); startRound(); return;
   }
   saveS();
@@ -668,7 +716,7 @@ async function startRound(){
   S.startedAt = Date.now();
   S.closesAt = calcClose();
   S.tally = [0,0,0,0]; S.total = 0;
-  S.winner = null; S.winnerId = null; S.changes = 0;
+  S.winner = null; S.winnerId = null;
   saveS(); lastTallyKey = ''; lastClosesWritten = S.closesAt;
   render();
   try{
@@ -737,7 +785,7 @@ async function queueWinner(i){
       const j = await r.json().catch(() => null);
       throw new Error(r.status === 404 ? 'Kein aktives Spotify-Gerät – läuft die Musik?' : ((j && j.error && j.error.message) || 'Spotify ' + r.status));
     }
-    S.status = 'queued'; S.winner = i; S.winnerId = c.id; S.changes = 0;
+    S.status = 'queued'; S.winner = i; S.winnerId = c.id;
     if (!S.played.includes(c.id)) S.played.push(c.id);
     saveS(); render();
     FB.patch('round', { status:'closed', winner:i }).catch(() => {});
