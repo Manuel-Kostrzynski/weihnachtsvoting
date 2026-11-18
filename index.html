@@ -172,7 +172,10 @@
   <div class="step" id="st4">
     <h3><span class="num">4</span> Playlist mit der Song-Auswahl</h3>
     <p class="muted">Aus dieser Playlist werden pro Runde vier Songs gezogen. Wegen Spotifys API-Regeln muss es eine <b>eigene</b> Playlist (oder eine gemeinsame, bei der du mitarbeitest) sein.</p>
-    <button id="loadPl" class="small ghost">Playlists laden</button>
+    <div class="row">
+      <button id="loadPl" class="small ghost">Playlists laden</button>
+      <input id="plSearch" class="hidden" type="search" placeholder="Playlist suchen …" autocomplete="off" style="flex:1;min-width:200px">
+    </div>
     <div id="plList" class="pl-list"></div>
   </div>
 
@@ -547,7 +550,7 @@ async function loadPlaylists(){
   try{
     const me = await SP.json('/me');
     let url = '/me/playlists?limit=50', all = [];
-    while (url && all.length < 300){ const j = await SP.json(url); all = all.concat(j.items || []); url = j.next; }
+    while (url && all.length < 2000){ const j = await SP.json(url); all = all.concat(j.items || []); url = j.next; }
     const usable = all.filter(p => p && (p.collaborative || (p.owner && p.owner.id === me.id)));
     const sel = LS.get('playlist', null);
     if (!usable.length){ box.innerHTML = '<div class="muted">Keine eigene Playlist gefunden. Lege in Spotify eine Playlist an (z.&nbsp;B. „Weihnachtsfeier“) und lade die Liste neu.</div>'; return; }
@@ -556,6 +559,20 @@ async function loadPlaylists(){
       const img = (p.images && p.images[0] && p.images[0].url) || '';
       return `<button class="pl ${sel && sel.id === p.id ? 'sel' : ''}" data-id="${esc(p.id)}" data-name="${esc(p.name)}"><div class="cover" style="${coverStyle(img)}"></div><div><div>${esc(p.name)}</div><div class="muted" style="font-size:13px">${n !== '' ? n + ' Songs' : ''}</div></div></button>`;
     }).join('');
+    const search = $('plSearch');
+    search.classList.remove('hidden');
+    const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const filter = () => {
+      const q = norm(search.value.trim());
+      let shown = 0;
+      box.querySelectorAll('.pl').forEach(b => { const ok = !q || norm(b.dataset.name).includes(q); b.classList.toggle('hidden', !ok); if (ok) shown++; });
+      let none = box.querySelector('.pl-none');
+      if (!shown){ if (!none){ none = document.createElement('div'); none.className = 'pl-none muted'; box.appendChild(none); } none.textContent = 'Keine Playlist gefunden. Gefolgte Playlists erscheinen hier nicht – kopiere sie in eine eigene.'; }
+      else if (none) none.remove();
+    };
+    search.oninput = filter;
+    filter();
+    if (!sel) setTimeout(() => search.focus(), 50);
     box.querySelectorAll('.pl').forEach(b => b.onclick = () => {
       LS.set('playlist', { id:b.dataset.id, name:b.dataset.name }); LS.del('tracks');
       box.querySelectorAll('.pl').forEach(x => x.classList.toggle('sel', x === b));
